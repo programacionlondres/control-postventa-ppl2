@@ -260,12 +260,12 @@
   .check-row .lab{ font-size:13.5px; font-weight:600; line-height:1.35; }
   .check-row .lab .d{ font-weight:400; color:var(--muted); font-size:12px; display:block; margin-top:1px; }
   label.f-label{ font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
-  input[type=date], textarea{
+  input[type=date], textarea, select{
     font:inherit; font-size:13.5px; padding:9px 11px; border-radius:9px; border:1.5px solid var(--line);
     background:var(--surface); color:var(--ink); width:100%; resize:vertical;
   }
   textarea{ min-height:70px; }
-  input[type=date]:focus, textarea:focus{ outline:2px solid var(--primary); outline-offset:1px; }
+  input[type=date]:focus, textarea:focus, select:focus{ outline:2px solid var(--primary); outline-offset:1px; }
   .modal-foot{ padding:18px 24px 22px; display:flex; gap:10px; justify-content:flex-end; align-items:center; }
   .btn{
     font:inherit; font-weight:700; font-size:13.5px; padding:10px 18px; border-radius:10px; cursor:pointer; border:1.5px solid transparent;
@@ -361,6 +361,15 @@
         <label class="check-row"><input type="checkbox" id="f_postventa_reparada">
           <span class="lab">Postventa reparada<span class="d">Solicitud de postventa cerrada</span></span>
         </label>
+      </div>
+      <div class="field-group">
+        <label class="f-label" for="f_supervisor">Supervisor a cargo</label>
+        <select id="f_supervisor">
+          <option value="">Sin asignar</option>
+          <option value="Felipe Reinoso">Felipe Reinoso</option>
+          <option value="Marcelo Espinoza">Marcelo Espinoza</option>
+          <option value="Fernanda Hernandez">Fernanda Hernandez</option>
+        </select>
       </div>
       <div class="field-group">
         <label class="f-label" for="f_fecha">Fecha de ingreso a reparar</label>
@@ -544,10 +553,12 @@ function showTooltip(e, lot, rec){
     if(rec.postventa_reparada) flags += `<span class="t-flag" style="background:var(--ok-bg);color:var(--ok)">Postventa reparada</span>`;
   }
   const visitaRow = (rec && rec.fecha_ingreso_reparar) ? `<div class="t-row" style="margin-top:4px;"><strong>Visita agendada:</strong> ${formatDateEs(rec.fecha_ingreso_reparar)}</div>` : '';
+  const supervisorRow = (rec && rec.supervisor) ? `<div class="t-row"><strong>Supervisor:</strong> ${rec.supervisor}</div>` : '';
   tt.innerHTML = `<div class="t-title">Manzana ${lot.manzana} · Lote ${lot.lote}</div>
     <div class="t-row">${lot.direccion}</div>
     <div class="t-row">${lot.nombre}</div>
     <div class="t-row" style="margin-top:4px;font-weight:700;">${STATUS_LABEL[s]}</div>
+    ${supervisorRow}
     ${visitaRow}
     ${flags ? `<div class="t-flags">${flags}</div>`:''}`;
   tt.classList.add('show');
@@ -584,6 +595,7 @@ function openModal(lot){
   byId('f_ventana_reparada').checked = !!rec.ventana_reparada;
   byId('f_postventa_activa').checked = !!rec.postventa_activa;
   byId('f_postventa_reparada').checked = !!rec.postventa_reparada;
+  byId('f_supervisor').value = rec.supervisor || '';
   byId('f_fecha').value = rec.fecha_ingreso_reparar || '';
   byId('f_obs').value = rec.observaciones || '';
   byId('saveFlash').classList.remove('show');
@@ -594,7 +606,7 @@ function closeModal(){ byId('modalBackdrop').hidden = true; state.current = null
 
 function applyEditLock(){
   const disabled = !state.canEdit;
-  ['f_ventana_problema','f_ventana_reparada','f_postventa_activa','f_postventa_reparada','f_fecha','f_obs'].forEach(id=>{
+  ['f_ventana_problema','f_ventana_reparada','f_postventa_activa','f_postventa_reparada','f_supervisor','f_fecha','f_obs'].forEach(id=>{
     byId(id).disabled = disabled;
   });
   byId('saveBtn').disabled = disabled;
@@ -609,6 +621,7 @@ async function saveCurrent(){
     ventana_reparada: byId('f_ventana_reparada').checked,
     postventa_activa: byId('f_postventa_activa').checked,
     postventa_reparada: byId('f_postventa_reparada').checked,
+    supervisor: byId('f_supervisor').value || '',
     fecha_ingreso_reparar: byId('f_fecha').value || '',
     observaciones: byId('f_obs').value || '',
     manzana: lot.manzana, lote: lot.lote,
@@ -639,6 +652,7 @@ function saveToSheet(id, data){
   params.set('postventa_reparada', data.postventa_reparada ? 'true' : 'false');
   params.set('fecha_ingreso_reparar', data.fecha_ingreso_reparar || '');
   params.set('observaciones', data.observaciones || '');
+  params.set('supervisor', data.supervisor || '');
   return fetch(SHEET_API_URL + '?' + params.toString()).then(r=>r.json());
 }
 
@@ -656,6 +670,7 @@ async function loadFromSheet(){
         postventa_reparada: r.postventa_reparada === true || r.postventa_reparada === 'true' || r.postventa_reparada === 'TRUE',
         fecha_ingreso_reparar: r.fecha_ingreso_reparar || '',
         observaciones: r.observaciones || '',
+        supervisor: r.supervisor || '',
         updated_at: r.updated_at || '',
       };
     });
@@ -667,6 +682,7 @@ async function loadFromSheet(){
         byId('f_ventana_reparada').checked = !!rec.ventana_reparada;
         byId('f_postventa_activa').checked = !!rec.postventa_activa;
         byId('f_postventa_reparada').checked = !!rec.postventa_reparada;
+        byId('f_supervisor').value = rec.supervisor || '';
         byId('f_fecha').value = rec.fecha_ingreso_reparar || '';
         byId('f_obs').value = rec.observaciones || '';
       }

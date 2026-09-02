@@ -16,8 +16,8 @@
     --accent-ink:#fff4ec;
     --ok:#3d8c5f;
     --ok-bg:#e4f2e9;
-    --warn:#c98a17;
-    --warn-bg:#fbf0dc;
+    --warn:#e8590c;
+    --warn-bg:#fce0c8;
     --bad:#c0392b;
     --bad-bg:#fbe6e2;
     --neutral-dot:#b9b0a0;
@@ -39,8 +39,8 @@
       --accent-ink:#2c1608;
       --ok:#6cc794;
       --ok-bg:#173225;
-      --warn:#e3ac3f;
-      --warn-bg:#332506;
+      --warn:#ff8a1e;
+      --warn-bg:#3d2408;
       --bad:#e2685a;
       --bad-bg:#3a1a15;
       --neutral-dot:#4b5356;
@@ -61,8 +61,8 @@
     --accent-ink:#2c1608;
     --ok:#6cc794;
     --ok-bg:#173225;
-    --warn:#e3ac3f;
-    --warn-bg:#332506;
+    --warn:#ff8a1e;
+    --warn-bg:#3d2408;
     --bad:#e2685a;
     --bad-bg:#3a1a15;
     --neutral-dot:#4b5356;
@@ -532,10 +532,12 @@ function showTooltip(e, lot, rec){
     if(rec.postventa_activa) flags += `<span class="t-flag" style="background:var(--warn-bg);color:var(--warn)">Postventa activa</span>`;
     if(rec.postventa_reparada) flags += `<span class="t-flag" style="background:var(--ok-bg);color:var(--ok)">Postventa reparada</span>`;
   }
+  const visitaRow = (rec && rec.fecha_ingreso_reparar) ? `<div class="t-row" style="margin-top:4px;"><strong>Visita agendada:</strong> ${formatDateEs(rec.fecha_ingreso_reparar)}</div>` : '';
   tt.innerHTML = `<div class="t-title">Manzana ${lot.manzana} · Lote ${lot.lote}</div>
     <div class="t-row">${lot.direccion}</div>
     <div class="t-row">${lot.nombre}</div>
     <div class="t-row" style="margin-top:4px;font-weight:700;">${STATUS_LABEL[s]}</div>
+    ${visitaRow}
     ${flags ? `<div class="t-flags">${flags}</div>`:''}`;
   tt.classList.add('show');
   moveTooltip(e);
@@ -549,6 +551,7 @@ function moveTooltip(e){
   tt.style.left = x+'px'; tt.style.top = y+'px';
 }
 function hideTooltip(){ byId('tooltip').classList.remove('show'); }
+function formatDateEs(iso){ if(!iso) return ''; const parts = String(iso).split('-'); if(parts.length!==3) return iso; const meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']; const mi=parseInt(parts[1],10)-1; return `${parseInt(parts[2],10)} ${meses[mi]||parts[1]} ${parts[0]}`; }
 
 function renderAll(){
   renderFilterBar();

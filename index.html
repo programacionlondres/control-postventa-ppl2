@@ -173,6 +173,10 @@
     content:''; position:absolute; top:-3px; right:-3px; width:7px; height:7px; border-radius:50%;
     background:var(--accent); border:1px solid #fff; transform:rotate(45deg);
   }
+  .pin .pv-mark{
+    position:absolute; bottom:-3px; left:-3px; width:7px; height:7px; border-radius:50%;
+    background:var(--warn); border:1px solid #fff; transform:rotate(45deg); z-index:1;
+  }
   .pin-c-bad{ background:var(--bad); }
   .pin-c-warn{ background:var(--warn); }
   .pin-c-ok{ background:var(--ok); }
@@ -225,6 +229,10 @@
   .lote-cell.obs::after{
     content:''; position:absolute; top:-3px; right:-3px; width:7px; height:7px; border-radius:50%;
     background:var(--accent); border:1.5px solid var(--surface);
+  }
+  .lote-cell.pv::before{
+    content:''; position:absolute; top:-3px; left:-3px; width:7px; height:7px; border-radius:50%;
+    background:var(--warn); border:1.5px solid var(--surface);
   }
 
   /* ---------- modal ---------- */
@@ -390,6 +398,9 @@ function statusOf(rec){
   return 'none';
 }
 const STATUS_LABEL = { bad:'Ventana con problema', warn:'Postventa activa', ok:'Resuelto', none:'Sin novedades' };
+function hasVentanaProblema(rec){ return !!(rec && rec.ventana_problema && !rec.ventana_reparada); }
+function hasPostventaActiva(rec){ return !!(rec && rec.postventa_activa && !rec.postventa_reparada); }
+function hasAnyFlag(rec){ return !!(rec && (rec.ventana_problema || rec.ventana_reparada || rec.postventa_activa || rec.postventa_reparada)); }
 
 const FILTERS = [
   {key:'todos', label:'Todos', color:null},
@@ -402,12 +413,11 @@ const FILTERS = [
 ];
 
 function matchesFilter(lot, rec){
-  const s = statusOf(rec);
   switch(state.activeFilter){
     case 'todos': return true;
-    case 'bad': return s==='bad';
-    case 'warn': return s==='warn';
-    case 'none': return s==='none';
+    case 'bad': return hasVentanaProblema(rec);
+    case 'warn': return hasPostventaActiva(rec);
+    case 'none': return !hasAnyFlag(rec);
     case 'ventana_reparada': return !!(rec && rec.ventana_reparada);
     case 'postventa_reparada': return !!(rec && rec.postventa_reparada);
     case 'obs': return !!(rec && rec.observaciones && rec.observaciones.trim());
@@ -441,14 +451,14 @@ function renderFilterBar(){
 
 function renderStats(){
   const total = LOTS.length;
-  let bad=0,warnC=0,ok=0,obs=0;
+  let bad=0,warnC=0,ok=0,obs=0,none=0;
   LOTS.forEach(l=>{
     const r = state.records[l.id];
-    const s = statusOf(r);
-    if(s==='bad') bad++;
-    if(s==='warn') warnC++;
-    if(s==='ok') ok++;
+    if(hasVentanaProblema(r)) bad++;
+    if(hasPostventaActiva(r)) warnC++;
+    if(r && (r.ventana_reparada || r.postventa_reparada)) ok++;
     if(r && r.observaciones && r.observaciones.trim()) obs++;
+    if(!hasAnyFlag(r)) none++;
   });
   const cells = [
     {n: total, l:'Viviendas totales', cls:''},
@@ -456,7 +466,7 @@ function renderStats(){
     {n: warnC, l:'Postventa activa', cls:'warn'},
     {n: ok, l:'Resueltas', cls:'ok'},
     {n: obs, l:'Con observación', cls:''},
-    {n: total-bad-warnC-ok, l:'Sin novedades', cls:''},
+    {n: none, l:'Sin novedades', cls:''},
   ];
   byId('stats').innerHTML = cells.map(c=>`<div class="stat ${c.cls}"><div class="n mono">${c.n}</div><div class="l">${c.l}</div></div>`).join('');
 }
@@ -479,6 +489,7 @@ function renderPins(){
     const show = matchesFilter(lot, rec) && matchesSearch(lot);
     const pin = document.createElement('div');
     pin.className = 'pin pin-c-'+s + (show?'':' dim') + ((rec && rec.observaciones && rec.observaciones.trim()) ? ' obs':'');
+    if(hasPostventaActiva(rec) && s!=='warn') pin.innerHTML = '<span class="pv-mark" title="Postventa activa"></span>';
     pin.style.left = lot.x+'%';
     pin.style.top = lot.y+'%';
     pin.tabIndex = 0;
@@ -510,7 +521,7 @@ function renderManzanas(){
       const s = statusOf(rec);
       const show = matchesFilter(lot, rec) && matchesSearch(lot);
       const cell = document.createElement('div');
-      cell.className = 'lote-cell' + (show?'':' dim') + ((rec && rec.observaciones && rec.observaciones.trim())?' obs':'');
+      cell.className = 'lote-cell' + (show?'':' dim') + ((rec && rec.observaciones && rec.observaciones.trim())?' obs':'') + ((hasPostventaActiva(rec) && s!=='warn')?' pv':'');
       cell.innerHTML = `<div class="num">${lot.lote}</div><div class="dot" style="background:${pinColorVar(s)}"></div>`;
       cell.onmouseenter = (e)=> showTooltip(e, lot, rec);
       cell.onmousemove = (e)=> moveTooltip(e);

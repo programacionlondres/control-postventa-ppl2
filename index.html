@@ -451,21 +451,21 @@ function renderFilterBar(){
 
 function renderStats(){
   const total = LOTS.length;
-  let bad=0,warnC=0,ok=0,obs=0,none=0;
+  let bad=0,warnC=0,ventanaRep=0,postventaRep=0,none=0;
   LOTS.forEach(l=>{
     const r = state.records[l.id];
     if(hasVentanaProblema(r)) bad++;
     if(hasPostventaActiva(r)) warnC++;
-    if(r && (r.ventana_reparada || r.postventa_reparada)) ok++;
-    if(r && r.observaciones && r.observaciones.trim()) obs++;
+    if(r && r.ventana_reparada) ventanaRep++;
+    if(r && r.postventa_reparada) postventaRep++;
     if(!hasAnyFlag(r)) none++;
   });
   const cells = [
     {n: total, l:'Viviendas totales', cls:''},
     {n: bad, l:'Con problema de ventana', cls:'bad'},
     {n: warnC, l:'Postventa activa', cls:'warn'},
-    {n: ok, l:'Resueltas', cls:'ok'},
-    {n: obs, l:'Con observación', cls:''},
+    {n: ventanaRep, l:'Ventana reparada', cls:'ok'},
+    {n: postventaRep, l:'Postventa reparada', cls:'ok'},
     {n: none, l:'Sin novedades', cls:''},
   ];
   byId('stats').innerHTML = cells.map(c=>`<div class="stat ${c.cls}"><div class="n mono">${c.n}</div><div class="l">${c.l}</div></div>`).join('');

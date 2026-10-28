@@ -25,6 +25,8 @@
     --warn-bg:#fce0c8;
     --bad:#c0392b;
     --bad-bg:#fbe6e2;
+    --reopened:#8445d6;
+    --reopened-bg:#ede3fb;
     --neutral-dot:#b9b0a0;
     --shadow: 0 1px 2px rgba(32,39,43,.06), 0 8px 24px -12px rgba(32,39,43,.18);
     --radius: 14px;
@@ -48,6 +50,8 @@
       --warn-bg:#3d2408;
       --bad:#e2685a;
       --bad-bg:#3a1a15;
+      --reopened:#b794f6;
+      --reopened-bg:#2f2347;
       --neutral-dot:#4b5356;
       --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
     }
@@ -70,6 +74,8 @@
     --warn-bg:#3d2408;
     --bad:#e2685a;
     --bad-bg:#3a1a15;
+    --reopened:#b794f6;
+    --reopened-bg:#2f2347;
     --neutral-dot:#4b5356;
     --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
   }
@@ -125,6 +131,7 @@
   .stat.bad .n{ color:var(--bad); }
   .stat.warn .n{ color:var(--warn); }
   .stat.ok .n{ color:var(--ok); }
+  .stat.reopened .n{ color:var(--reopened); }
   @media (max-width:900px){ .stats{ grid-template-columns:repeat(3,1fr); } }
   @media (max-width:520px){ .stats{ grid-template-columns:repeat(2,1fr); } }
 
@@ -185,6 +192,7 @@
   .pin-c-bad{ background:var(--bad); }
   .pin-c-warn{ background:var(--warn); }
   .pin-c-ok{ background:var(--ok); }
+  .pin-c-reopened{ background:var(--reopened); }
   .pin-c-none{ background:var(--neutral-dot); }
 
   .legend{
@@ -329,6 +337,7 @@
       <div class="item"><span class="sw" style="background:var(--bad)"></span> Problema de ventana sin reparar</div>
       <div class="item"><span class="sw" style="background:var(--warn)"></span> Postventa activa</div>
       <div class="item"><span class="sw" style="background:var(--ok)"></span> Reparada / postventa cerrada</div>
+      <div class="item"><span class="sw" style="background:var(--reopened)"></span> Reabierto</div>
       <div class="item"><span class="sw" style="background:var(--neutral-dot)"></span> Sin novedades</div>
       <div class="item"><span class="sw" style="background:var(--accent); border-radius:3px;"></span> Con observación</div>
     </div>
@@ -368,6 +377,9 @@
         </label>
         <label class="check-row"><input type="checkbox" id="f_postventa_reparada">
           <span class="lab">Postventa reparada<span class="d">Solicitud de postventa cerrada</span></span>
+        </label>
+        <label class="check-row"><input type="checkbox" id="f_reabierto">
+          <span class="lab">Reabierto<span class="d">Ya estaba cerrada, pero volvió a presentar un problema</span></span>
         </label>
       </div>
       <div class="field-group">
@@ -413,13 +425,14 @@ function statusOf(rec){
   rec = rec || {};
   if(rec.ventana_problema && !rec.ventana_reparada) return 'bad';
   if(rec.postventa_activa && !rec.postventa_reparada) return 'warn';
+  if(rec.reabierto) return 'reopened';
   if(rec.ventana_reparada || rec.postventa_reparada) return 'ok';
   return 'none';
 }
-const STATUS_LABEL = { bad:'Ventana con problema', warn:'Postventa activa', ok:'Resuelto', none:'Sin novedades' };
+const STATUS_LABEL = { bad:'Ventana con problema', warn:'Postventa activa', ok:'Resuelto', reopened:'Reabierto', none:'Sin novedades' };
 function hasVentanaProblema(rec){ return !!(rec && rec.ventana_problema && !rec.ventana_reparada); }
 function hasPostventaActiva(rec){ return !!(rec && rec.postventa_activa && !rec.postventa_reparada); }
-function hasAnyFlag(rec){ return !!(rec && (rec.ventana_problema || rec.ventana_reparada || rec.postventa_activa || rec.postventa_reparada)); }
+function hasAnyFlag(rec){ return !!(rec && (rec.ventana_problema || rec.ventana_reparada || rec.postventa_activa || rec.postventa_reparada || rec.reabierto)); }
 
 const FILTERS = [
   {key:'todos', label:'Todos', color:null},
@@ -427,6 +440,7 @@ const FILTERS = [
   {key:'ventana_reparada', label:'Ventana reparada', color:'var(--ok)'},
   {key:'warn', label:'Postventa activa', color:'var(--warn)'},
   {key:'postventa_reparada', label:'Postventa reparada', color:'var(--ok)'},
+  {key:'reopened', label:'Reabierto', color:'var(--reopened)'},
   {key:'obs', label:'Con observación', color:'var(--accent)'},
   {key:'none', label:'Sin novedades', color:'var(--neutral-dot)'},
 ];
@@ -439,6 +453,7 @@ function matchesFilter(lot, rec){
     case 'none': return !hasAnyFlag(rec);
     case 'ventana_reparada': return !!(rec && rec.ventana_reparada);
     case 'postventa_reparada': return !!(rec && rec.postventa_reparada);
+    case 'reopened': return !!(rec && rec.reabierto);
     case 'obs': return !!(rec && rec.observaciones && rec.observaciones.trim());
     default: return true;
   }
@@ -470,13 +485,14 @@ function renderFilterBar(){
 
 function renderStats(){
   const total = LOTS.length;
-  let bad=0,warnC=0,ventanaRep=0,postventaRep=0,none=0;
+  let bad=0,warnC=0,ventanaRep=0,postventaRep=0,reopenedC=0,none=0;
   LOTS.forEach(l=>{
     const r = state.records[l.id];
     if(hasVentanaProblema(r)) bad++;
     if(hasPostventaActiva(r)) warnC++;
     if(r && r.ventana_reparada) ventanaRep++;
     if(r && r.postventa_reparada) postventaRep++;
+    if(r && r.reabierto) reopenedC++;
     if(!hasAnyFlag(r)) none++;
   });
   const cells = [
@@ -485,6 +501,7 @@ function renderStats(){
     {n: warnC, l:'Postventa activa', cls:'warn'},
     {n: ventanaRep, l:'Ventana reparada', cls:'ok'},
     {n: postventaRep, l:'Postventa reparada', cls:'ok'},
+    {n: reopenedC, l:'Reabiertas', cls:'reopened'},
     {n: none, l:'Sin novedades', cls:''},
   ];
   byId('stats').innerHTML = cells.map(c=>`<div class="stat ${c.cls}"><div class="n mono">${c.n}</div><div class="l">${c.l}</div></div>`).join('');
@@ -496,7 +513,7 @@ function renderListHint(){
 }
 
 function pinColorVar(s){
-  return s==='bad' ? 'var(--bad)' : s==='warn' ? 'var(--warn)' : s==='ok' ? 'var(--ok)' : 'var(--neutral-dot)';
+  return s==='bad' ? 'var(--bad)' : s==='warn' ? 'var(--warn)' : s==='ok' ? 'var(--ok)' : s==='reopened' ? 'var(--reopened)' : 'var(--neutral-dot)';
 }
 
 function renderPins(){
@@ -561,6 +578,7 @@ function showTooltip(e, lot, rec){
     if(rec.ventana_reparada) flags += `<span class="t-flag" style="background:var(--ok-bg);color:var(--ok)">Ventana reparada</span>`;
     if(rec.postventa_activa) flags += `<span class="t-flag" style="background:var(--warn-bg);color:var(--warn)">Postventa activa</span>`;
     if(rec.postventa_reparada) flags += `<span class="t-flag" style="background:var(--ok-bg);color:var(--ok)">Postventa reparada</span>`;
+    if(rec.reabierto) flags += `<span class="t-flag" style="background:var(--reopened-bg);color:var(--reopened)">Reabierto</span>`;
   }
   const visitaRow = (rec && rec.fecha_ingreso_reparar) ? `<div class="t-row" style="margin-top:4px;"><strong>Visita agendada:</strong> ${formatDateEs(rec.fecha_ingreso_reparar)}</div>` : '';
   const supervisorRow = (rec && rec.supervisor) ? `<div class="t-row"><strong>Supervisor:</strong> ${rec.supervisor}</div>` : '';
@@ -605,6 +623,7 @@ function openModal(lot){
   byId('f_ventana_reparada').checked = !!rec.ventana_reparada;
   byId('f_postventa_activa').checked = !!rec.postventa_activa;
   byId('f_postventa_reparada').checked = !!rec.postventa_reparada;
+  byId('f_reabierto').checked = !!rec.reabierto;
   byId('f_supervisor').value = rec.supervisor || '';
   byId('f_fecha').value = rec.fecha_ingreso_reparar || '';
   byId('f_obs').value = rec.observaciones || '';
@@ -616,7 +635,7 @@ function closeModal(){ byId('modalBackdrop').hidden = true; state.current = null
 
 function applyEditLock(){
   const disabled = !state.canEdit;
-  ['f_ventana_problema','f_ventana_reparada','f_postventa_activa','f_postventa_reparada','f_supervisor','f_fecha','f_obs'].forEach(id=>{
+  ['f_ventana_problema','f_ventana_reparada','f_postventa_activa','f_postventa_reparada','f_reabierto','f_supervisor','f_fecha','f_obs'].forEach(id=>{
     byId(id).disabled = disabled;
   });
   byId('saveBtn').disabled = disabled;
@@ -631,6 +650,7 @@ async function saveCurrent(){
     ventana_reparada: byId('f_ventana_reparada').checked,
     postventa_activa: byId('f_postventa_activa').checked,
     postventa_reparada: byId('f_postventa_reparada').checked,
+    reabierto: byId('f_reabierto').checked,
     supervisor: byId('f_supervisor').value || '',
     fecha_ingreso_reparar: byId('f_fecha').value || '',
     observaciones: byId('f_obs').value || '',
@@ -660,6 +680,7 @@ function saveToSheet(id, data){
   params.set('ventana_reparada', data.ventana_reparada ? 'true' : 'false');
   params.set('postventa_activa', data.postventa_activa ? 'true' : 'false');
   params.set('postventa_reparada', data.postventa_reparada ? 'true' : 'false');
+  params.set('reabierto', data.reabierto ? 'true' : 'false');
   params.set('fecha_ingreso_reparar', data.fecha_ingreso_reparar || '');
   params.set('observaciones', data.observaciones || '');
   params.set('supervisor', data.supervisor || '');
@@ -678,6 +699,7 @@ async function loadFromSheet(){
         ventana_reparada: r.ventana_reparada === true || r.ventana_reparada === 'true' || r.ventana_reparada === 'TRUE',
         postventa_activa: r.postventa_activa === true || r.postventa_activa === 'true' || r.postventa_activa === 'TRUE',
         postventa_reparada: r.postventa_reparada === true || r.postventa_reparada === 'true' || r.postventa_reparada === 'TRUE',
+        reabierto: r.reabierto === true || r.reabierto === 'true' || r.reabierto === 'TRUE',
         fecha_ingreso_reparar: r.fecha_ingreso_reparar || '',
         observaciones: r.observaciones || '',
         supervisor: r.supervisor || '',
@@ -692,6 +714,7 @@ async function loadFromSheet(){
         byId('f_ventana_reparada').checked = !!rec.ventana_reparada;
         byId('f_postventa_activa').checked = !!rec.postventa_activa;
         byId('f_postventa_reparada').checked = !!rec.postventa_reparada;
+        byId('f_reabierto').checked = !!rec.reabierto;
         byId('f_supervisor').value = rec.supervisor || '';
         byId('f_fecha').value = rec.fecha_ingreso_reparar || '';
         byId('f_obs').value = rec.observaciones || '';
@@ -732,7 +755,7 @@ const SUPERVISORES = ['Felipe Reinoso','Marcelo Espinoza','Fernanda Hernandez'];
 function buildReportData(){
   const now = new Date();
   const fechaGen = now.toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric'}) + ' ' + now.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
-  let bad=0, warnC=0, ventanaRep=0, postventaRep=0, none=0;
+  let bad=0, warnC=0, ventanaRep=0, postventaRep=0, reopenedC=0, none=0;
   const bySupervisor = {};
   SUPERVISORES.forEach(n=>{ bySupervisor[n] = {total:0, pendientes:0}; });
   bySupervisor['Sin asignar'] = {total:0, pendientes:0};
@@ -743,11 +766,12 @@ function buildReportData(){
   });
   sorted.forEach(lot=>{
     const rec = state.records[lot.id] || {};
-    const pendiente = hasVentanaProblema(rec) || hasPostventaActiva(rec);
+    const pendiente = hasVentanaProblema(rec) || hasPostventaActiva(rec) || !!rec.reabierto;
     if(hasVentanaProblema(rec)) bad++;
     if(hasPostventaActiva(rec)) warnC++;
     if(rec.ventana_reparada) ventanaRep++;
     if(rec.postventa_reparada) postventaRep++;
+    if(rec.reabierto) reopenedC++;
     const any = hasAnyFlag(rec);
     if(!any) none++;
     const supKey = rec.supervisor && bySupervisor[rec.supervisor] ? rec.supervisor : 'Sin asignar';
@@ -768,7 +792,7 @@ function buildReportData(){
       });
     }
   });
-  return { fechaGen, total: LOTS.length, bad, warnC, ventanaRep, postventaRep, none, bySupervisor, detailRows };
+  return { fechaGen, total: LOTS.length, bad, warnC, ventanaRep, postventaRep, reopenedC, none, bySupervisor, detailRows };
 }
 
 function generarInforme(){
@@ -824,6 +848,7 @@ function generarInforme(){
       ['Postventa activa', String(d.warnC)],
       ['Ventana reparada', String(d.ventanaRep)],
       ['Postventa reparada', String(d.postventaRep)],
+      ['Reabiertas', String(d.reopenedC)],
       ['Sin novedades', String(d.none)],
     ],
   }));

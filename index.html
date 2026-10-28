@@ -847,12 +847,12 @@ function generarInforme(){
   y = doc.lastAutoTable.finalY + 22;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11.5);
-  doc.text('Detalle de viviendas con seguimiento pendiente (' + d.detailRows.length + ')', marginX, y);
+  doc.text('Detalle de viviendas con seguimiento registrado (' + d.detailRows.length + ')', marginX, y);
   y += 8;
 
   const detailBody = d.detailRows.length
     ? d.detailRows.map(r=> [r.loc, r.dir, r.prop, r.estado, r.supervisor, r.fecha, r.obs])
-    : [['—', 'No hay viviendas con seguimiento pendiente.', '', '', '', '', '']];
+    : [['—', 'No hay viviendas con seguimiento registrado.', '', '', '', '', '']];
   doc.autoTable(Object.assign({}, tableDefaults, {
     startY: y,
     head: [['Manzana-Lote','Dirección','Propietario','Estado','Supervisor','Visita agendada','Observaciones']],
